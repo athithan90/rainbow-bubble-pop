@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bubble Rainbow Pop Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      background: linear-gradient(135deg, #ffe0f0, #e0f7fa);
+      overflow-x: hidden;
+    }
+
+    h1 {
+      margin: 20px;
+      font-size: 2em;
+      color: #6a1b9a;
+    }
+
+    #scoreboard {
+      font-size: 18px;
+      margin: 10px;
+      color: #444;
+    }
+
+    #game {
+      margin: 10px auto;
+      width: 90%;
+      max-width: 600px;
+      height: 400px;
+      border: 3px solid #ccc;
+      border-radius: 15px;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle, #f3e5f5, #ede7f6);
+    }
+
+    .bubble {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      position: absolute;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 16px;
+      transition: transform 0.2s ease-out, opacity 0.3s;
+      animation: float linear;
+      will-change: transform, opacity;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.2);
+      color: white;
+    }
+
+    @keyframes float {
+      from {
+        bottom: -80px;
+        transform: scale(0.8);
+      }
+      to {
+        bottom: 100%;
+        transform: scale(1);
+      }
+    }
+
+    .pop {
+      animation: popEffect 0.3s ease-out forwards;
+    }
+
+    @keyframes popEffect {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+
+    #controls {
+      margin: 10px;
+    }
+
+    select, button {
+      padding: 10px 15px;
+      font-size: 16px;
+      margin: 5px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #startBtn {
+      background: #8e24aa;
+      color: white;
+    }
+
+    #startBtn:hover {
+      background: #6a1b9a;
+    }
+
+    #shareBtn {
+      background: #43a047;
+      color: white;
+      display: none;
+    }
+
+    #shareBtn:hover {
+      background: #2e7d32;
+    }
+
+    #leaderboard {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌈 Rainbow Bubble Pop</h1>
+
+  <div id="scoreboard">
+    Time: <span id="time">10</span>s | Score: <span id="score">0</span>
+  </div>
+
+  <div id="controls">
+    <select id="durationSelect">
+      <option value="10">⏱️ 10 Seconds</option>
+      <option value="30">⏱️ 30 Seconds</option>
+      <option value="60">⏱️ 60 Seconds</option>
+    </select>
+    <button id="startBtn">Start Game</button>
+    <button id="shareBtn">Share Score</button>
+  </div>
+
+  <div id="game"></div>
+  <div id="leaderboard"></div>
+
+  <audio id="popSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_f75858b05b.mp3" preload="auto"></audio>
+
+  <script>
+    const game = document.getElementById("game");
+    const scoreEl = document.getElementById("score");
+    const timeEl = document.getElementById("time");
+    const startBtn = document.getElementById("startBtn");
+    const shareBtn = document.getElementById("shareBtn");
+    const durationSelect = document.getElementById("durationSelect");
+    const leaderboard = document.getElementById("leaderboard");
+    const popSound = document.getElementById("popSound");
+
+    let score = 0;
+    let timeLeft = 10;
+    let interval, bubbleInterval;
+    let playing = false;
+    let bubbleSpeed = 5000;
+
+    function getRainbowColor(index) {
+      const colors = [
+        "#e91e63", "#ff5722", "#ffeb3b", "#4caf50", "#2196f3", "#3f51b5", "#9c27b0"
+      ];
+      return colors[index % colors.length];
+    }
+
+    function createBubble() {
+      const bubble = document.createElement("div");
+      bubble.classList.add("bubble");
+
+      const rand = Math.random();
+      let points = 1;
+
+      if (rand < 0.1) {
+        bubble.textContent = "+5";
+        points = 5;
+      } else if (rand < 0.25) {
+        bubble.textContent = "+3";
+        points = 3;
+      } else {
+        bubble.textContent = "";
+        points = 1;
+      }
+
+      // Random rainbow background
+      const colorIndex = Math.floor(Math.random() * 7);
+      const color = getRainbowColor(colorIndex);
+      bubble.style.background = `radial-gradient(circle at 30% 30%, ${color}, #00000022)`;
+
+      const x = Math.random() * (game.clientWidth - 60);
+      bubble.style.left = `${x}px`;
+
+      const duration = Math.max(1000, bubbleSpeed);
+      bubble.style.animationDuration = `${duration}ms`;
+
+      // Make bubbles pop with any pointer (mouse, touchpad, touch)
+      bubble.addEventListener("pointerdown", () => {
+        popSound.currentTime = 0;
+        popSound.play();
+        score += points;
+        scoreEl.textContent = score;
+        bubble.classList.add("pop");
+        setTimeout(() => bubble.remove(), 300);
+      });
+
+      game.appendChild(bubble);
+      setTimeout(() => bubble.remove(), duration);
+    }
+
+    function startGame() {
+      if (playing) return;
+      playing = true;
+      score = 0;
+      timeLeft = parseInt(durationSelect.value);
+      scoreEl.textContent = score;
+      timeEl.textContent = timeLeft;
+      startBtn.disabled = true;
+      shareBtn.style.display = "none";
+      leaderboard.innerHTML = "";
+      game.innerHTML = "";
+      bubbleSpeed = 5000;
+
+      interval = setInterval(() => {
+        timeLeft--;
+        timeEl.textContent = timeLeft;
+
+        if (timeLeft % 5 === 0) {
+          bubbleSpeed -= 300;
+        }
+
+        if (timeLeft <= 0) endGame();
+      }, 1000);
+
+      bubbleInterval = setInterval(() => {
+        createBubble();
+      }, 300);
+    }
+
+    function endGame() {
+      clearInterval(interval);
+      clearInterval(bubbleInterval);
+      playing = false;
+      startBtn.disabled = false;
+      shareBtn.style.display = "inline-block";
+      alert(`Time's up! You popped ${score} bubbles!`);
+      saveToLeaderboard(score);
+      displayLeaderboard();
+    }
+
+    function saveToLeaderboard(score) {
+      const today = new Date().toLocaleDateString();
+      let data = JSON.parse(localStorage.getItem("bubbleLeaderboard")) || {};
+      data[today] = Math.max(data[today] || 0, score);
+      localStorage.setItem("bubbleLeaderboard", JSON.stringify(data));
+    }
+
+    function displayLeaderboard() {
+      const data = JSON.parse(localStorage.getItem("bubbleLeaderboard")) || {};
+      const today = new Date().toLocaleDateString();
+      leaderboard.innerHTML = `<strong>🏆 Today's Top Score:</strong> ${data[today] || 0}`;
+    }
+
+    shareBtn.onclick = () => {
+      const shareText = `I popped ${score} rainbow bubbles! 🌈🫧 Try it: ${location.href}`;
+      if (navigator.share) {
+        navigator.share({ title: 'Rainbow Bubble Pop', text: shareText, url: location.href });
+      } else {
+        navigator.clipboard.writeText(shareText);
+        alert("Score copied to clipboard! Share it with friends!");
+      }
+    };
+
+    startBtn.addEventListener("click", startGame);
+    displayLeaderboard();
+  </script>
+</body>
+</html>
